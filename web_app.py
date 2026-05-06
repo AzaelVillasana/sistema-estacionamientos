@@ -174,6 +174,103 @@ fecha_obj = st.date_input("Selecciona fecha")
 
 fecha = fecha_obj.strftime("%Y-%m-%d")
 
+# =====================================
+# FILTRAR EVENTOS DEL DÍA
+# =====================================
+
+eventos_dia = []
+
+for e in eventos:
+
+    if e["fecha"] == fecha:
+        eventos_dia.append(e)
+
+# =====================================
+# KPIs EJECUTIVOS
+# =====================================
+
+total_cajones = sum(e["cajones"] for e in eventos_dia)
+
+total_eventos = len(eventos_dia)
+
+# Hora pico
+horas = {}
+
+for h in range(24):
+
+    hora_texto = f"{h:02d}:00"
+
+    horas[hora_texto] = 0
+
+for e in eventos_dia:
+
+    inicio = datetime.strptime(e["inicio"], "%H:%M")
+    fin = datetime.strptime(e["fin"], "%H:%M")
+
+    for h in range(24):
+
+        hora_actual = datetime.strptime(f"{h:02d}:00", "%H:%M")
+
+        if inicio <= hora_actual < fin:
+
+            horas[f"{h:02d}:00"] += e["cajones"]
+
+hora_pico = max(horas, key=horas.get)
+valor_hora_pico = horas[hora_pico]
+
+# Estacionamiento más usado
+uso_est = {}
+
+for e in eventos_dia:
+
+    est = e["estacionamiento"]
+
+    uso_est[est] = uso_est.get(est, 0) + e["cajones"]
+
+if len(uso_est) > 0:
+
+    top_est = max(uso_est, key=uso_est.get)
+    top_est_valor = uso_est[top_est]
+
+else:
+
+    top_est = "N/A"
+    top_est_valor = 0
+
+# =====================================
+# MOSTRAR KPIs
+# =====================================
+
+st.divider()
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric(
+        "🚗 Cajones Asignados",
+        total_cajones
+    )
+
+with col2:
+    st.metric(
+        "📅 Eventos del Día",
+        total_eventos
+    )
+
+with col3:
+    st.metric(
+        "🕐 Hora Pico",
+        f"{hora_pico}",
+        f"{valor_hora_pico} cajones"
+    )
+
+with col4:
+    st.metric(
+        "🏆 Estacionamiento Top",
+        top_est,
+        f"{top_est_valor} cajones"
+    )
+
 st.divider()
 
 # =====================================
@@ -183,23 +280,12 @@ st.divider()
 if st.button("📊 Total del Día"):
 
     resultado = {}
-    total_general = 0
 
-    for e in eventos:
+    for e in eventos_dia:
 
-        if e["fecha"] == fecha:
+        est = e["estacionamiento"]
 
-            est = e["estacionamiento"]
-
-            resultado[est] = resultado.get(est, 0) + e["cajones"]
-
-            total_general += e["cajones"]
-
-    st.subheader("📊 Total General")
-
-    st.success(f"🚗 Total asignado: {total_general}")
-
-    st.divider()
+        resultado[est] = resultado.get(est, 0) + e["cajones"]
 
     st.subheader("📍 Desglose por Estacionamiento")
 
@@ -221,32 +307,30 @@ if st.button("🌅🌇 Mañana / Tarde"):
     total_m = 0
     total_t = 0
 
-    for e in eventos:
+    for e in eventos_dia:
 
-        if e["fecha"] == fecha:
+        est = e["estacionamiento"]
 
-            est = e["estacionamiento"]
+        if est not in resultado:
 
-            if est not in resultado:
+            resultado[est] = {
+                "m": 0,
+                "t": 0
+            }
 
-                resultado[est] = {
-                    "m": 0,
-                    "t": 0
-                }
+        hora = datetime.strptime(e["inicio"], "%H:%M")
 
-            hora = datetime.strptime(e["inicio"], "%H:%M")
+        if hora.hour < 12:
 
-            if hora.hour < 12:
+            resultado[est]["m"] += e["cajones"]
 
-                resultado[est]["m"] += e["cajones"]
+            total_m += e["cajones"]
 
-                total_m += e["cajones"]
+        else:
 
-            else:
+            resultado[est]["t"] += e["cajones"]
 
-                resultado[est]["t"] += e["cajones"]
-
-                total_t += e["cajones"]
+            total_t += e["cajones"]
 
     st.subheader("📊 Totales Generales")
 
@@ -272,16 +356,15 @@ if st.button("🌅🌇 Mañana / Tarde"):
 
 
 # =====================================
-# OCUPACIÓN POR HORA Y ESTACIONAMIENTO
+# OCUPACIÓN POR HORA
 # =====================================
 
 if st.button("📈 Ocupación por Hora"):
 
     estacionamientos = set()
 
-    for e in eventos:
-        if e["fecha"] == fecha:
-            estacionamientos.add(e["estacionamiento"])
+    for e in eventos_dia:
+        estacionamientos.add(e["estacionamiento"])
 
     estacionamientos = sorted(estacionamientos)
 
@@ -300,16 +383,14 @@ if st.button("📈 Ocupación por Hora"):
 
         hora_actual = datetime.strptime(hora_texto, "%H:%M")
 
-        for e in eventos:
+        for e in eventos_dia:
 
-            if e["fecha"] == fecha:
+            inicio = datetime.strptime(e["inicio"], "%H:%M")
+            fin = datetime.strptime(e["fin"], "%H:%M")
 
-                inicio = datetime.strptime(e["inicio"], "%H:%M")
-                fin = datetime.strptime(e["fin"], "%H:%M")
+            if inicio <= hora_actual < fin:
 
-                if inicio <= hora_actual < fin:
-
-                    fila[e["estacionamiento"]] += e["cajones"]
+                fila[e["estacionamiento"]] += e["cajones"]
 
         tabla.append(fila)
 
