@@ -88,8 +88,7 @@ st.caption("Monitoreo operativo de cajones para eventos")
 # GOOGLE SHEETS
 # =====================================
 
-URL = "https://docs.google.com/spreadsheets/d/18INzmZCOKZ4z_ZmVHZ0ELVjua3MX7g3c5alOWwRl3u4/edit?gid=0#gid=0"
-
+URL = "https://docs.google.com/spreadsheets/d/18INzmZCOKZ4z_ZmVHZ0ELVjua3MX7g3c5alOWwRl3u4/export?format=csv"
 # =====================================
 # EXTRAER NÚMEROS
 # =====================================
