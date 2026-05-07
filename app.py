@@ -17,10 +17,7 @@ st.set_page_config(
 # LOGIN SIMPLE
 # =====================================
 
-USUARIOS = {
-    "azael": "azael123",
-    "admin": "admin123"
-}
+USUARIOS = st.secrets["usuarios"]
 
 # =====================================
 # SESIÓN
