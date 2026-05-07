@@ -5,28 +5,45 @@ from datetime import datetime
 import re
 
 # =====================================
-# CONFIGURACIÓN LOGIN
+# CONFIGURACIÓN PÁGINA
 # =====================================
 
-names = [
-    "Azael Villasana",
-    "Administrador"
-]
+st.set_page_config(
+    page_title="Sistema de Estacionamientos",
+    layout="wide"
+)
 
-usernames = [
-    "azael",
-    "admin"
-]
-
-passwords = [
-    "azael123",
-    "admin123"
-]
+# =====================================
+# PASSWORDS ENCRIPTADOS
+# Usuario: azael / Password: azael123
+# Usuario: admin / Password: admin123
+# =====================================
 
 hashed_passwords = [
-    '$2b$12$7j7vK8D5jA9kT8j2YjvQ2u6F1TzR6nG6h8JmY0kK7zYjY1YzQxWmK',
-    '$2b$12$7j7vK8D5jA9kT8j2YjvQ2u6F1TzR6nG6h8JmY0kK7zYjY1YzQxWmK'
+    "$2b$12$7j7vK8D5jA9kT8j2YjvQ2u6F1TzR6nG6h8JmY0kK7zYjY1YzQxWmK",
+    "$2b$12$7j7vK8D5jA9kT8j2YjvQ2u6F1TzR6nG6h8JmY0kK7zYjY1YzQxWmK"
 ]
+
+# =====================================
+# CREDENCIALES
+# =====================================
+
+credentials = {
+    "usernames": {
+        "azael": {
+            "name": "Azael Villasana",
+            "password": hashed_passwords[0]
+        },
+        "admin": {
+            "name": "Administrador",
+            "password": hashed_passwords[1]
+        }
+    }
+}
+
+# =====================================
+# LOGIN
+# =====================================
 
 authenticator = stauth.Authenticate(
     credentials,
@@ -34,10 +51,6 @@ authenticator = stauth.Authenticate(
     "abcdef",
     cookie_expiry_days=1
 )
-
-# =====================================
-# LOGIN
-# =====================================
 
 name, authentication_status, username = authenticator.login(
     "Login",
@@ -53,15 +66,10 @@ if authentication_status == None:
     st.stop()
 
 # =====================================
-# SISTEMA
+# SISTEMA PRINCIPAL
 # =====================================
 
 if authentication_status:
-
-    st.set_page_config(
-        page_title="Sistema de Estacionamientos",
-        layout="wide"
-    )
 
     authenticator.logout("Cerrar sesión", "sidebar")
 
@@ -70,7 +78,7 @@ if authentication_status:
     st.title("🚗 Sistema de Estacionamientos")
 
     # =====================================
-    # GOOGLE SHEETS CSV
+    # GOOGLE SHEETS
     # =====================================
 
     URL = "https://docs.google.com/spreadsheets/d/18INzmZCOKZ4z_ZmVHZ0ELVjua3MX7g3c5alOWwRl3u4/export?format=csv"
@@ -108,6 +116,7 @@ if authentication_status:
         for formato in formatos:
 
             try:
+
                 return datetime.strptime(
                     fecha,
                     formato
@@ -139,6 +148,7 @@ if authentication_status:
         for formato in formatos:
 
             try:
+
                 return datetime.strptime(
                     hora,
                     formato
@@ -186,9 +196,13 @@ if authentication_status:
                 continue
 
             eventos.append({
+
                 "fecha": fecha_inicio,
+
                 "inicio": hora_inicio,
+
                 "fin": hora_fin,
+
                 "estacionamiento": str(
                     row["Estacionamiento"]
                 ).strip().upper(),
@@ -200,6 +214,7 @@ if authentication_status:
                 "evento": str(
                     row["Nombre del Evento"]
                 ).strip()
+
             })
 
         return eventos
@@ -593,6 +608,8 @@ if authentication_status:
             "📈 Gráfica por Estacionamiento"
         )
 
-        df_chart = df_horas.set_index("Hora")
+        df_chart = df_horas.set_index(
+            "Hora"
+        )
 
         st.line_chart(df_chart)
