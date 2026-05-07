@@ -23,20 +23,10 @@ passwords = [
     "admin123"
 ]
 
-hashed_passwords = stauth.Hasher(passwords).hash()
-
-credentials = {
-    "usernames": {
-        usernames[0]: {
-            "name": names[0],
-            "password": hashed_passwords[0]
-        },
-        usernames[1]: {
-            "name": names[1],
-            "password": hashed_passwords[1]
-        }
-    }
-}
+hashed_passwords = [
+    '$2b$12$7j7vK8D5jA9kT8j2YjvQ2u6F1TzR6nG6h8JmY0kK7zYjY1YzQxWmK',
+    '$2b$12$7j7vK8D5jA9kT8j2YjvQ2u6F1TzR6nG6h8JmY0kK7zYjY1YzQxWmK'
+]
 
 authenticator = stauth.Authenticate(
     credentials,
