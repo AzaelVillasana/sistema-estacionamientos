@@ -53,8 +53,7 @@ authenticator = stauth.Authenticate(
 )
 
 name, authentication_status, username = authenticator.login(
-    "Login",
-    "main"
+    location="main"
 )
 
 if authentication_status == False:
@@ -71,7 +70,10 @@ if authentication_status == None:
 
 if authentication_status:
 
-    authenticator.logout("Cerrar sesión", "sidebar")
+    authenticator.logout(
+    "Cerrar sesión",
+    location="sidebar"
+)
 
     st.sidebar.success(f"Bienvenido {name}")
 
