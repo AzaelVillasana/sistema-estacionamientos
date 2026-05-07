@@ -93,8 +93,6 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🚗 Sistema de Estacionamientos")
-
 URL = "https://docs.google.com/spreadsheets/d/18INzmZCOKZ4z_ZmVHZ0ELVjua3MX7g3c5alOWwRl3u4/export?format=csv"
 
 # =====================================
