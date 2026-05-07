@@ -36,7 +36,9 @@ if not st.session_state.logged_in:
 
     st.title("🔐 Login")
 
-    usuario = st.text_input("Usuario")
+    usuario = st.text_input(
+        "Usuario"
+    )
 
     password = st.text_input(
         "Contraseña",
@@ -99,7 +101,10 @@ def extraer_numero(valor):
     if pd.isna(valor):
         return 0
 
-    numeros = re.findall(r'\d+', str(valor))
+    numeros = re.findall(
+        r'\d+',
+        str(valor)
+    )
 
     return int(numeros[0]) if numeros else 0
 
@@ -161,12 +166,13 @@ def normalizar_fecha(fecha):
         "%d-%m-%Y"
     ]
 
-    for f in formatos:
+    for formato in formatos:
 
         try:
+
             return datetime.strptime(
                 fecha,
-                f
+                formato
             ).date()
 
         except:
@@ -185,10 +191,25 @@ def normalizar_hora(hora):
 
     hora = str(hora).strip().lower()
 
-    hora = hora.replace("a. m.", "AM")
-    hora = hora.replace("p. m.", "PM")
-    hora = hora.replace("a.m.", "AM")
-    hora = hora.replace("p.m.", "PM")
+    hora = hora.replace(
+        "a. m.",
+        "AM"
+    )
+
+    hora = hora.replace(
+        "p. m.",
+        "PM"
+    )
+
+    hora = hora.replace(
+        "a.m.",
+        "AM"
+    )
+
+    hora = hora.replace(
+        "p.m.",
+        "PM"
+    )
 
     formatos = [
         "%I:%M:%S %p",
@@ -197,13 +218,13 @@ def normalizar_hora(hora):
         "%H:%M"
     ]
 
-    for f in formatos:
+    for formato in formatos:
 
         try:
 
             return datetime.strptime(
                 hora,
-                f
+                formato
             ).strftime("%H:%M")
 
         except:
@@ -284,12 +305,14 @@ def cargar_eventos():
 # CARGAR EVENTOS
 # =====================================
 
-with st.spinner("Cargando información..."):
+with st.spinner(
+    "Cargando información..."
+):
 
     eventos = cargar_eventos()
 
 # =====================================
-# SELECCIÓN DE FECHA
+# FECHA
 # =====================================
 
 fecha_obj = st.date_input(
@@ -318,7 +341,9 @@ total_cajones = sum(
     e["cajones"] for e in eventos_dia
 )
 
-total_eventos = len(eventos_dia)
+total_eventos = len(
+    eventos_dia
+)
 
 # =====================================
 # HORA PICO
@@ -433,9 +458,15 @@ st.divider()
 # EVENTOS ACTIVOS EN TIEMPO REAL
 # =====================================
 
-st.subheader("🟢 Eventos Activos Ahora")
+st.subheader(
+    "🟢 Eventos Activos Ahora"
+)
 
-hora_actual = datetime.now().strftime("%H:%M")
+ahora = datetime.now()
+
+hora_actual = ahora.strftime(
+    "%H:%M"
+)
 
 hora_actual_dt = datetime.strptime(
     hora_actual,
@@ -444,30 +475,35 @@ hora_actual_dt = datetime.strptime(
 
 eventos_activos = []
 
-# SOLO SI LA FECHA SELECCIONADA ES HOY
+# SOLO SI LA FECHA ES HOY
 
-if fecha == datetime.now().date():
+if fecha == ahora.date():
 
     for e in eventos_dia:
 
-        inicio = datetime.strptime(
-            e["inicio"],
-            "%H:%M"
-        )
+        try:
 
-        fin = datetime.strptime(
-            e["fin"],
-            "%H:%M"
-        )
+            inicio = datetime.strptime(
+                e["inicio"],
+                "%H:%M"
+            )
 
-        # SOLO EVENTOS ACTIVOS EXACTAMENTE AHORA
+            fin = datetime.strptime(
+                e["fin"],
+                "%H:%M"
+            )
 
-        if inicio <= hora_actual_dt <= fin:
+            # SOLO EVENTOS ACTIVOS AHORA
 
-            eventos_activos.append(e)
+            if inicio <= hora_actual_dt < fin:
+
+                eventos_activos.append(e)
+
+        except:
+            continue
 
 # =====================================
-# MOSTRAR RESULTADOS
+# MOSTRAR EVENTOS ACTIVOS
 # =====================================
 
 if len(eventos_activos) == 0:
@@ -512,11 +548,15 @@ else:
                     f"🚗 {e['cajones']} cajones"
                 )
 
+st.divider()
+
 # =====================================
 # TOTAL DEL DÍA
 # =====================================
 
-if st.button("📊 Total del Día"):
+if st.button(
+    "📊 Total del Día"
+):
 
     resultado = {}
 
@@ -535,7 +575,9 @@ if st.button("📊 Total del Día"):
 
     for est in sorted(resultado):
 
-        st.markdown(f"## 🚗 {est}")
+        st.markdown(
+            f"## 🚗 {est}"
+        )
 
         st.write(
             f"Total: {resultado[est]}"
@@ -547,7 +589,9 @@ if st.button("📊 Total del Día"):
 # MAÑANA / TARDE
 # =====================================
 
-if st.button("🌅🌇 Mañana / Tarde"):
+if st.button(
+    "🌅🌇 Mañana / Tarde"
+):
 
     resultado = {}
 
@@ -602,7 +646,9 @@ if st.button("🌅🌇 Mañana / Tarde"):
 
         total_est = d["m"] + d["t"]
 
-        st.markdown(f"## 🚗 {est}")
+        st.markdown(
+            f"## 🚗 {est}"
+        )
 
         st.write(
             f"📊 Total: {total_est}"
@@ -622,7 +668,9 @@ if st.button("🌅🌇 Mañana / Tarde"):
 # OCUPACIÓN POR HORA
 # =====================================
 
-if st.button("📈 Ocupación por Hora"):
+if st.button(
+    "📈 Ocupación por Hora"
+):
 
     estacionamientos = set()
 
@@ -675,7 +723,9 @@ if st.button("📈 Ocupación por Hora"):
 
         tabla.append(fila)
 
-    df_horas = pd.DataFrame(tabla)
+    df_horas = pd.DataFrame(
+        tabla
+    )
 
     st.subheader(
         "📊 Cajones Ocupados por Hora"
