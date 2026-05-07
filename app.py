@@ -36,9 +36,7 @@ if not st.session_state.logged_in:
 
     st.title("🔐 Login")
 
-    usuario = st.text_input(
-        "Usuario"
-    )
+    usuario = st.text_input("Usuario")
 
     password = st.text_input(
         "Contraseña",
@@ -82,21 +80,18 @@ if st.sidebar.button("Cerrar sesión"):
 
 st.title("🚗 Sistema de Estacionamientos")
 
-st.caption("Monitoreo operativo de cajones para eventos")
-
-# =====================================
-# CONFIG
-# =====================================
-
-st.set_page_config(
-    page_title="Sistema de Estacionamientos",
-    layout="wide"
+st.caption(
+    "Monitoreo operativo de cajones para eventos"
 )
+
+# =====================================
+# URL GOOGLE SHEETS
+# =====================================
 
 URL = "https://docs.google.com/spreadsheets/d/18INzmZCOKZ4z_ZmVHZ0ELVjua3MX7g3c5alOWwRl3u4/export?format=csv"
 
 # =====================================
-# EXTRAER NÚMERO
+# EXTRAER NÚMEROS
 # =====================================
 
 def extraer_numero(valor):
@@ -108,7 +103,6 @@ def extraer_numero(valor):
 
     return int(numeros[0]) if numeros else 0
 
-
 # =====================================
 # NORMALIZAR FECHA
 # =====================================
@@ -116,7 +110,9 @@ def extraer_numero(valor):
 def normalizar_fecha(fecha):
 
     if pd.isna(fecha):
-        return ""
+        return None
+
+    fecha = str(fecha).strip().lower()
 
     meses = {
         "enero": "01",
@@ -133,8 +129,6 @@ def normalizar_fecha(fecha):
         "diciembre": "12"
     }
 
-    fecha = str(fecha).strip().lower()
-
     try:
 
         partes = fecha.split("/")
@@ -143,32 +137,42 @@ def normalizar_fecha(fecha):
 
             dia = partes[0].zfill(2)
 
-            mes = meses.get(partes[1], partes[1])
+            mes = meses.get(
+                partes[1],
+                partes[1]
+            )
 
             anio = partes[2]
 
             if len(anio) == 2:
                 anio = "20" + anio
 
-            return f"{anio}-{mes}-{dia}"
+            return datetime.strptime(
+                f"{anio}-{mes}-{dia}",
+                "%Y-%m-%d"
+            ).date()
 
     except:
         pass
 
     formatos = [
         "%d/%m/%Y",
-        "%Y-%m-%d"
+        "%Y-%m-%d",
+        "%d-%m-%Y"
     ]
 
     for f in formatos:
 
         try:
-            return datetime.strptime(fecha, f).strftime("%Y-%m-%d")
+            return datetime.strptime(
+                fecha,
+                f
+            ).date()
+
         except:
             continue
 
-    return ""
-
+    return None
 
 # =====================================
 # NORMALIZAR HORA
@@ -196,18 +200,22 @@ def normalizar_hora(hora):
     for f in formatos:
 
         try:
-            return datetime.strptime(hora, f).strftime("%H:%M")
+
+            return datetime.strptime(
+                hora,
+                f
+            ).strftime("%H:%M")
+
         except:
             continue
 
     return ""
 
-
 # =====================================
 # CARGAR EVENTOS
 # =====================================
 
-@st.cache_data
+@st.cache_data(ttl=300)
 def cargar_eventos():
 
     df = pd.read_csv(URL)
@@ -218,12 +226,27 @@ def cargar_eventos():
 
     for _, row in df.iterrows():
 
-        fecha_inicio = normalizar_fecha(row["Fecha inicio"])
-        hora_inicio = normalizar_hora(row["Hora inicio"])
-        hora_fin = normalizar_hora(row["Hora fin"])
+        fecha_inicio = normalizar_fecha(
+            row["Fecha inicio"]
+        )
 
-        if fecha_inicio == "":
+        fecha_fin = normalizar_fecha(
+            row["Fecha fin"]
+        )
+
+        hora_inicio = normalizar_hora(
+            row["Hora inicio"]
+        )
+
+        hora_fin = normalizar_hora(
+            row["Hora fin"]
+        )
+
+        if fecha_inicio is None:
             continue
+
+        if fecha_fin is None:
+            fecha_fin = fecha_inicio
 
         if hora_inicio == "":
             continue
@@ -232,43 +255,68 @@ def cargar_eventos():
             continue
 
         eventos.append({
-            "fecha": fecha_inicio,
+
+            "fecha_inicio": fecha_inicio,
+
+            "fecha_fin": fecha_fin,
+
             "inicio": hora_inicio,
+
             "fin": hora_fin,
-            "estacionamiento": str(row["Estacionamiento"]).strip().upper(),
-            "cajones": extraer_numero(row["Cajones"]),
-            "evento": str(row["Nombre del Evento"]).strip()
+
+            "estacionamiento": str(
+                row["Estacionamiento"]
+            ).strip().upper(),
+
+            "cajones": extraer_numero(
+                row["Cajones"]
+            ),
+
+            "evento": str(
+                row["Nombre del Evento"]
+            ).strip()
+
         })
 
     return eventos
 
-
-eventos = cargar_eventos()
-
 # =====================================
-# FECHA
+# CARGAR EVENTOS
 # =====================================
 
-fecha_obj = st.date_input("Selecciona fecha")
+with st.spinner("Cargando información..."):
 
-fecha = fecha_obj.strftime("%Y-%m-%d")
+    eventos = cargar_eventos()
 
 # =====================================
-# FILTRAR EVENTOS DEL DÍA
+# SELECCIÓN DE FECHA
+# =====================================
+
+fecha_obj = st.date_input(
+    "📅 Selecciona fecha"
+)
+
+fecha = fecha_obj
+
+# =====================================
+# FILTRAR EVENTOS MULTIDÍA
 # =====================================
 
 eventos_dia = []
 
 for e in eventos:
 
-    if e["fecha"] == fecha:
+    if e["fecha_inicio"] <= fecha <= e["fecha_fin"]:
+
         eventos_dia.append(e)
 
 # =====================================
-# KPIs EJECUTIVOS
+# KPIs
 # =====================================
 
-total_cajones = sum(e["cajones"] for e in eventos_dia)
+total_cajones = sum(
+    e["cajones"] for e in eventos_dia
+)
 
 total_eventos = len(eventos_dia)
 
@@ -280,24 +328,36 @@ horas = {}
 
 for h in range(24):
 
-    hora_texto = f"{h:02d}:00"
-
-    horas[hora_texto] = 0
+    horas[f"{h:02d}:00"] = 0
 
 for e in eventos_dia:
 
-    inicio = datetime.strptime(e["inicio"], "%H:%M")
-    fin = datetime.strptime(e["fin"], "%H:%M")
+    inicio = datetime.strptime(
+        e["inicio"],
+        "%H:%M"
+    )
+
+    fin = datetime.strptime(
+        e["fin"],
+        "%H:%M"
+    )
 
     for h in range(24):
 
-        hora_actual = datetime.strptime(f"{h:02d}:00", "%H:%M")
+        hora_actual = datetime.strptime(
+            f"{h:02d}:00",
+            "%H:%M"
+        )
 
         if inicio <= hora_actual < fin:
 
             horas[f"{h:02d}:00"] += e["cajones"]
 
-hora_pico = max(horas, key=horas.get)
+hora_pico = max(
+    horas,
+    key=horas.get
+)
+
 valor_hora_pico = horas[hora_pico]
 
 # =====================================
@@ -310,11 +370,18 @@ for e in eventos_dia:
 
     est = e["estacionamiento"]
 
-    uso_est[est] = uso_est.get(est, 0) + e["cajones"]
+    uso_est[est] = uso_est.get(
+        est,
+        0
+    ) + e["cajones"]
 
 if len(uso_est) > 0:
 
-    top_est = max(uso_est, key=uso_est.get)
+    top_est = max(
+        uso_est,
+        key=uso_est.get
+    )
+
     top_est_valor = uso_est[top_est]
 
 else:
@@ -323,7 +390,7 @@ else:
     top_est_valor = 0
 
 # =====================================
-# MOSTRAR KPIs
+# KPIs VISUALES
 # =====================================
 
 st.divider()
@@ -331,25 +398,29 @@ st.divider()
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
+
     st.metric(
         "🚗 Cajones Asignados",
         total_cajones
     )
 
 with col2:
+
     st.metric(
         "📅 Eventos del Día",
         total_eventos
     )
 
 with col3:
+
     st.metric(
         "🕐 Hora Pico",
-        f"{hora_pico}",
+        hora_pico,
         f"{valor_hora_pico} cajones"
     )
 
 with col4:
+
     st.metric(
         "🏆 Estacionamiento Top",
         top_est,
@@ -365,22 +436,39 @@ st.divider()
 st.subheader("🟢 Eventos Activos Ahora")
 
 hora_actual = datetime.now().strftime("%H:%M")
-hora_actual_dt = datetime.strptime(hora_actual, "%H:%M")
+
+hora_actual_dt = datetime.strptime(
+    hora_actual,
+    "%H:%M"
+)
 
 eventos_activos = []
 
-for e in eventos_dia:
+# SOLO SI LA FECHA SELECCIONADA ES HOY
 
-    inicio = datetime.strptime(e["inicio"], "%H:%M")
-    fin = datetime.strptime(e["fin"], "%H:%M")
+if fecha == datetime.now().date():
 
-    if inicio <= hora_actual_dt < fin:
+    for e in eventos_dia:
 
-        eventos_activos.append(e)
+        inicio = datetime.strptime(
+            e["inicio"],
+            "%H:%M"
+        )
+
+        fin = datetime.strptime(
+            e["fin"],
+            "%H:%M"
+        )
+
+        if inicio <= hora_actual_dt < fin:
+
+            eventos_activos.append(e)
 
 if len(eventos_activos) == 0:
 
-    st.info("No hay eventos activos en este momento")
+    st.info(
+        "No hay eventos activos en este momento"
+    )
 
 else:
 
@@ -388,21 +476,35 @@ else:
 
         with st.container(border=True):
 
-            st.markdown(f"### 🎫 {e['evento']}")
+            st.markdown(
+                f"### 🎫 {e['evento']}"
+            )
 
             col1, col2, col3, col4 = st.columns(4)
 
             with col1:
-                st.write(f"📍 {e['estacionamiento']}")
+
+                st.write(
+                    f"📍 {e['estacionamiento']}"
+                )
 
             with col2:
-                st.write(f"🕐 Inicio: {e['inicio']}")
+
+                st.write(
+                    f"🕐 Inicio: {e['inicio']}"
+                )
 
             with col3:
-                st.write(f"🕐 Fin: {e['fin']}")
+
+                st.write(
+                    f"🕐 Fin: {e['fin']}"
+                )
 
             with col4:
-                st.write(f"🚗 {e['cajones']} cajones")
+
+                st.write(
+                    f"🚗 {e['cajones']} cajones"
+                )
 
 st.divider()
 
@@ -418,16 +520,24 @@ if st.button("📊 Total del Día"):
 
         est = e["estacionamiento"]
 
-        resultado[est] = resultado.get(est, 0) + e["cajones"]
+        resultado[est] = resultado.get(
+            est,
+            0
+        ) + e["cajones"]
 
-    st.subheader("📍 Desglose por Estacionamiento")
+    st.subheader(
+        "📍 Desglose por Estacionamiento"
+    )
 
     for est in sorted(resultado):
 
         st.markdown(f"## 🚗 {est}")
-        st.write(f"Total: {resultado[est]}")
-        st.write("---")
 
+        st.write(
+            f"Total: {resultado[est]}"
+        )
+
+        st.write("---")
 
 # =====================================
 # MAÑANA / TARDE
@@ -451,7 +561,10 @@ if st.button("🌅🌇 Mañana / Tarde"):
                 "t": 0
             }
 
-        hora = datetime.strptime(e["inicio"], "%H:%M")
+        hora = datetime.strptime(
+            e["inicio"],
+            "%H:%M"
+        )
 
         if hora.hour < 12:
 
@@ -465,13 +578,19 @@ if st.button("🌅🌇 Mañana / Tarde"):
 
             total_t += e["cajones"]
 
-    st.subheader("📊 Totales Generales")
+    st.subheader(
+        "📊 Totales Generales"
+    )
 
-    st.success(f"🌅 Mañana: {total_m} | 🌇 Tarde: {total_t}")
+    st.success(
+        f"🌅 Mañana: {total_m} | 🌇 Tarde: {total_t}"
+    )
 
     st.divider()
 
-    st.subheader("📍 Desglose por Estacionamiento")
+    st.subheader(
+        "📍 Desglose por Estacionamiento"
+    )
 
     for est in sorted(resultado):
 
@@ -481,12 +600,19 @@ if st.button("🌅🌇 Mañana / Tarde"):
 
         st.markdown(f"## 🚗 {est}")
 
-        st.write(f"📊 Total: {total_est}")
-        st.write(f"🌅 Mañana: {d['m']}")
-        st.write(f"🌇 Tarde: {d['t']}")
+        st.write(
+            f"📊 Total: {total_est}"
+        )
+
+        st.write(
+            f"🌅 Mañana: {d['m']}"
+        )
+
+        st.write(
+            f"🌇 Tarde: {d['t']}"
+        )
 
         st.write("---")
-
 
 # =====================================
 # OCUPACIÓN POR HORA
@@ -497,9 +623,14 @@ if st.button("📈 Ocupación por Hora"):
     estacionamientos = set()
 
     for e in eventos_dia:
-        estacionamientos.add(e["estacionamiento"])
 
-    estacionamientos = sorted(estacionamientos)
+        estacionamientos.add(
+            e["estacionamiento"]
+        )
+
+    estacionamientos = sorted(
+        estacionamientos
+    )
 
     tabla = []
 
@@ -512,31 +643,53 @@ if st.button("📈 Ocupación por Hora"):
         }
 
         for est in estacionamientos:
+
             fila[est] = 0
 
-        hora_actual = datetime.strptime(hora_texto, "%H:%M")
+        hora_actual = datetime.strptime(
+            hora_texto,
+            "%H:%M"
+        )
 
         for e in eventos_dia:
 
-            inicio = datetime.strptime(e["inicio"], "%H:%M")
-            fin = datetime.strptime(e["fin"], "%H:%M")
+            inicio = datetime.strptime(
+                e["inicio"],
+                "%H:%M"
+            )
+
+            fin = datetime.strptime(
+                e["fin"],
+                "%H:%M"
+            )
 
             if inicio <= hora_actual < fin:
 
-                fila[e["estacionamiento"]] += e["cajones"]
+                fila[
+                    e["estacionamiento"]
+                ] += e["cajones"]
 
         tabla.append(fila)
 
     df_horas = pd.DataFrame(tabla)
 
-    st.subheader("📊 Cajones Ocupados por Hora")
+    st.subheader(
+        "📊 Cajones Ocupados por Hora"
+    )
 
-    st.dataframe(df_horas, use_container_width=True)
+    st.dataframe(
+        df_horas,
+        use_container_width=True
+    )
 
     st.divider()
 
-    st.subheader("📈 Gráfica por Estacionamiento")
+    st.subheader(
+        "📈 Gráfica por Estacionamiento"
+    )
 
-    df_chart = df_horas.set_index("Hora")
+    df_chart = df_horas.set_index(
+        "Hora"
+    )
 
     st.line_chart(df_chart)
