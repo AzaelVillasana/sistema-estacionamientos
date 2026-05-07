@@ -1,11 +1,10 @@
 import streamlit as st
-import streamlit_authenticator as stauth
 import pandas as pd
 from datetime import datetime
 import re
 
 # =====================================
-# CONFIGURACIÓN PÁGINA
+# CONFIGURACIÓN
 # =====================================
 
 st.set_page_config(
@@ -14,610 +13,418 @@ st.set_page_config(
 )
 
 # =====================================
-# PASSWORDS ENCRIPTADOS
-# Usuario: azael / Password: azael123
-# Usuario: admin / Password: admin123
+# LOGIN SIMPLE
 # =====================================
 
-hashed_passwords = [
-    "$2b$12$7j7vK8D5jA9kT8j2YjvQ2u6F1TzR6nG6h8JmY0kK7zYjY1YzQxWmK",
-    "$2b$12$7j7vK8D5jA9kT8j2YjvQ2u6F1TzR6nG6h8JmY0kK7zYjY1YzQxWmK"
-]
-
-# =====================================
-# CREDENCIALES
-# =====================================
-
-credentials = {
-    "usernames": {
-        "azael": {
-            "name": "Azael Villasana",
-            "password": hashed_passwords[0]
-        },
-        "admin": {
-            "name": "Administrador",
-            "password": hashed_passwords[1]
-        }
-    }
+USUARIOS = {
+    "azael": "azael123",
+    "admin": "admin123"
 }
+
+# =====================================
+# SESIÓN
+# =====================================
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
 # =====================================
 # LOGIN
 # =====================================
 
-authenticator = stauth.Authenticate(
-    credentials,
-    "sistema_estacionamientos",
-    "abcdef",
-    cookie_expiry_days=1
-)
+if not st.session_state.logged_in:
 
-authenticator.login(location="main")
+    st.title("🔐 Login")
 
-authentication_status = st.session_state.get(
-    "authentication_status"
-)
+    usuario = st.text_input("Username")
 
-name = st.session_state.get("name")
+    password = st.text_input(
+        "Password",
+        type="password"
+    )
 
-username = st.session_state.get("username")
+    if st.button("Login"):
 
-if authentication_status == False:
-    st.error("❌ Usuario o contraseña incorrectos")
-    st.stop()
+        if usuario in USUARIOS and USUARIOS[usuario] == password:
 
-if authentication_status == None:
-    st.warning("🔐 Ingresa tus credenciales")
+            st.session_state.logged_in = True
+            st.session_state.usuario = usuario
+
+            st.rerun()
+
+        else:
+
+            st.error("❌ Usuario o contraseña incorrectos")
+
     st.stop()
 
 # =====================================
-# SISTEMA PRINCIPAL
+# SIDEBAR
 # =====================================
 
-if authentication_status:
-
-    authenticator.logout(
-    "Cerrar sesión",
-    location="sidebar"
+st.sidebar.success(
+    f"Bienvenido {st.session_state.usuario}"
 )
 
-    st.sidebar.success(f"Bienvenido {name}")
+if st.sidebar.button("Cerrar sesión"):
 
-    st.title("🚗 Sistema de Estacionamientos")
+    st.session_state.logged_in = False
 
-    # =====================================
-    # GOOGLE SHEETS
-    # =====================================
+    st.rerun()
 
-    URL = "https://docs.google.com/spreadsheets/d/18INzmZCOKZ4z_ZmVHZ0ELVjua3MX7g3c5alOWwRl3u4/export?format=csv"
+# =====================================
+# TÍTULO
+# =====================================
 
-    # =====================================
-    # EXTRAER NÚMEROS
-    # =====================================
+st.title("🚗 Sistema de Estacionamientos")
 
-    def extraer_numero(valor):
+# =====================================
+# GOOGLE SHEETS
+# =====================================
 
-        if pd.isna(valor):
-            return 0
+URL = "https://docs.google.com/spreadsheets/d/18INzmZCOKZ4z_ZmVHZ0ELVjua3MX7g3c5alOWwRl3u4/export?format=csv"
 
-        numeros = re.findall(r'\d+', str(valor))
+# =====================================
+# EXTRAER NÚMEROS
+# =====================================
 
-        return int(numeros[0]) if numeros else 0
+def extraer_numero(valor):
 
-    # =====================================
-    # NORMALIZAR FECHA
-    # =====================================
+    if pd.isna(valor):
+        return 0
 
-    def normalizar_fecha(fecha):
+    numeros = re.findall(r'\d+', str(valor))
 
-        if pd.isna(fecha):
-            return ""
+    return int(numeros[0]) if numeros else 0
 
-        fecha = str(fecha).strip()
+# =====================================
+# NORMALIZAR FECHA
+# =====================================
 
-        formatos = [
-            "%d/%m/%Y",
-            "%Y-%m-%d",
-            "%d-%m-%Y"
-        ]
+def normalizar_fecha(fecha):
 
-        for formato in formatos:
-
-            try:
-
-                return datetime.strptime(
-                    fecha,
-                    formato
-                ).strftime("%Y-%m-%d")
-
-            except:
-                continue
-
+    if pd.isna(fecha):
         return ""
 
-    # =====================================
-    # NORMALIZAR HORA
-    # =====================================
+    fecha = str(fecha).strip()
 
-    def normalizar_hora(hora):
+    formatos = [
+        "%d/%m/%Y",
+        "%Y-%m-%d",
+        "%d-%m-%Y"
+    ]
 
-        if pd.isna(hora):
-            return ""
+    for formato in formatos:
 
-        hora = str(hora).strip().upper()
+        try:
 
-        formatos = [
-            "%I:%M %p",
-            "%H:%M",
-            "%I:%M:%S %p",
-            "%H:%M:%S"
-        ]
+            return datetime.strptime(
+                fecha,
+                formato
+            ).strftime("%Y-%m-%d")
 
-        for formato in formatos:
+        except:
+            continue
 
-            try:
+    return ""
 
-                return datetime.strptime(
-                    hora,
-                    formato
-                ).strftime("%H:%M")
+# =====================================
+# NORMALIZAR HORA
+# =====================================
 
-            except:
-                continue
+def normalizar_hora(hora):
 
+    if pd.isna(hora):
         return ""
 
-    # =====================================
-    # CARGAR EVENTOS
-    # =====================================
+    hora = str(hora).strip().upper()
 
-    @st.cache_data
-    def cargar_eventos():
+    formatos = [
+        "%I:%M %p",
+        "%H:%M",
+        "%I:%M:%S %p",
+        "%H:%M:%S"
+    ]
 
-        df = pd.read_csv(URL)
+    for formato in formatos:
 
-        df.columns = df.columns.str.strip()
+        try:
 
-        eventos = []
+            return datetime.strptime(
+                hora,
+                formato
+            ).strftime("%H:%M")
 
-        for _, row in df.iterrows():
+        except:
+            continue
 
-            fecha_inicio = normalizar_fecha(
-                row["Fecha inicio"]
-            )
+    return ""
 
-            hora_inicio = normalizar_hora(
-                row["Hora inicio"]
-            )
+# =====================================
+# CARGAR EVENTOS
+# =====================================
 
-            hora_fin = normalizar_hora(
-                row["Hora fin"]
-            )
+@st.cache_data
+def cargar_eventos():
 
-            if fecha_inicio == "":
-                continue
+    df = pd.read_csv(URL)
 
-            if hora_inicio == "":
-                continue
+    df.columns = df.columns.str.strip()
 
-            if hora_fin == "":
-                continue
+    eventos = []
 
-            eventos.append({
+    for _, row in df.iterrows():
 
-                "fecha": fecha_inicio,
-
-                "inicio": hora_inicio,
-
-                "fin": hora_fin,
-
-                "estacionamiento": str(
-                    row["Estacionamiento"]
-                ).strip().upper(),
-
-                "cajones": extraer_numero(
-                    row["Cajones"]
-                ),
-
-                "evento": str(
-                    row["Nombre del Evento"]
-                ).strip()
-
-            })
-
-        return eventos
-
-    eventos = cargar_eventos()
-
-    # =====================================
-    # FECHA
-    # =====================================
-
-    fecha_obj = st.date_input(
-        "Selecciona fecha"
-    )
-
-    fecha = fecha_obj.strftime("%Y-%m-%d")
-
-    # =====================================
-    # EVENTOS DEL DÍA
-    # =====================================
-
-    eventos_dia = []
-
-    for e in eventos:
-
-        if e["fecha"] == fecha:
-            eventos_dia.append(e)
-
-    # =====================================
-    # KPIs
-    # =====================================
-
-    total_cajones = sum(
-        e["cajones"] for e in eventos_dia
-    )
-
-    total_eventos = len(eventos_dia)
-
-    # =====================================
-    # HORA PICO
-    # =====================================
-
-    horas = {}
-
-    for h in range(24):
-
-        hora_texto = f"{h:02d}:00"
-
-        horas[hora_texto] = 0
-
-    for e in eventos_dia:
-
-        inicio = datetime.strptime(
-            e["inicio"],
-            "%H:%M"
+        fecha_inicio = normalizar_fecha(
+            row["Fecha inicio"]
         )
 
-        fin = datetime.strptime(
-            e["fin"],
-            "%H:%M"
+        hora_inicio = normalizar_hora(
+            row["Hora inicio"]
         )
 
-        for h in range(24):
-
-            hora_actual = datetime.strptime(
-                f"{h:02d}:00",
-                "%H:%M"
-            )
-
-            if inicio <= hora_actual < fin:
-
-                horas[f"{h:02d}:00"] += e["cajones"]
-
-    hora_pico = max(
-        horas,
-        key=horas.get
-    )
-
-    valor_hora_pico = horas[hora_pico]
-
-    # =====================================
-    # ESTACIONAMIENTO TOP
-    # =====================================
-
-    uso_est = {}
-
-    for e in eventos_dia:
-
-        est = e["estacionamiento"]
-
-        uso_est[est] = uso_est.get(
-            est,
-            0
-        ) + e["cajones"]
-
-    if len(uso_est) > 0:
-
-        top_est = max(
-            uso_est,
-            key=uso_est.get
+        hora_fin = normalizar_hora(
+            row["Hora fin"]
         )
 
-        top_est_valor = uso_est[top_est]
+        if fecha_inicio == "":
+            continue
 
-    else:
+        if hora_inicio == "":
+            continue
 
-        top_est = "N/A"
-        top_est_valor = 0
+        if hora_fin == "":
+            continue
 
-    # =====================================
-    # KPIs VISUALES
-    # =====================================
+        eventos.append({
 
-    st.divider()
+            "fecha": fecha_inicio,
 
-    col1, col2, col3, col4 = st.columns(4)
+            "inicio": hora_inicio,
 
-    with col1:
-        st.metric(
-            "🚗 Cajones Asignados",
-            total_cajones
-        )
+            "fin": hora_fin,
 
-    with col2:
-        st.metric(
-            "📅 Eventos del Día",
-            total_eventos
-        )
+            "estacionamiento": str(
+                row["Estacionamiento"]
+            ).strip().upper(),
 
-    with col3:
-        st.metric(
-            "🕐 Hora Pico",
-            hora_pico,
-            f"{valor_hora_pico} cajones"
-        )
+            "cajones": extraer_numero(
+                row["Cajones"]
+            ),
 
-    with col4:
-        st.metric(
-            "🏆 Estacionamiento Top",
-            top_est,
-            f"{top_est_valor} cajones"
-        )
+            "evento": str(
+                row["Nombre del Evento"]
+            ).strip()
 
-    st.divider()
+        })
 
-    # =====================================
-    # EVENTOS ACTIVOS
-    # =====================================
+    return eventos
 
-    st.subheader("🟢 Eventos Activos Ahora")
+eventos = cargar_eventos()
 
-    hora_actual = datetime.now().strftime("%H:%M")
+# =====================================
+# FECHA
+# =====================================
 
-    hora_actual_dt = datetime.strptime(
-        hora_actual,
+fecha_obj = st.date_input(
+    "Selecciona fecha"
+)
+
+fecha = fecha_obj.strftime("%Y-%m-%d")
+
+# =====================================
+# EVENTOS DEL DÍA
+# =====================================
+
+eventos_dia = []
+
+for e in eventos:
+
+    if e["fecha"] == fecha:
+        eventos_dia.append(e)
+
+# =====================================
+# KPIs
+# =====================================
+
+total_cajones = sum(
+    e["cajones"] for e in eventos_dia
+)
+
+total_eventos = len(eventos_dia)
+
+# =====================================
+# HORA PICO
+# =====================================
+
+horas = {}
+
+for h in range(24):
+
+    hora_texto = f"{h:02d}:00"
+
+    horas[hora_texto] = 0
+
+for e in eventos_dia:
+
+    inicio = datetime.strptime(
+        e["inicio"],
         "%H:%M"
     )
 
-    eventos_activos = []
+    fin = datetime.strptime(
+        e["fin"],
+        "%H:%M"
+    )
 
-    for e in eventos_dia:
+    for h in range(24):
 
-        inicio = datetime.strptime(
-            e["inicio"],
+        hora_actual = datetime.strptime(
+            f"{h:02d}:00",
             "%H:%M"
         )
 
-        fin = datetime.strptime(
-            e["fin"],
-            "%H:%M"
-        )
+        if inicio <= hora_actual < fin:
 
-        if inicio <= hora_actual_dt < fin:
+            horas[f"{h:02d}:00"] += e["cajones"]
 
-            eventos_activos.append(e)
+hora_pico = max(
+    horas,
+    key=horas.get
+)
 
-    if len(eventos_activos) == 0:
+valor_hora_pico = horas[hora_pico]
 
-        st.info(
-            "No hay eventos activos en este momento"
-        )
+# =====================================
+# ESTACIONAMIENTO TOP
+# =====================================
 
-    else:
+uso_est = {}
 
-        for e in eventos_activos:
+for e in eventos_dia:
 
-            with st.container(border=True):
+    est = e["estacionamiento"]
 
-                st.markdown(
-                    f"### 🎫 {e['evento']}"
+    uso_est[est] = uso_est.get(
+        est,
+        0
+    ) + e["cajones"]
+
+if len(uso_est) > 0:
+
+    top_est = max(
+        uso_est,
+        key=uso_est.get
+    )
+
+    top_est_valor = uso_est[top_est]
+
+else:
+
+    top_est = "N/A"
+    top_est_valor = 0
+
+# =====================================
+# KPIs VISUALES
+# =====================================
+
+st.divider()
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric(
+        "🚗 Cajones Asignados",
+        total_cajones
+    )
+
+with col2:
+    st.metric(
+        "📅 Eventos del Día",
+        total_eventos
+    )
+
+with col3:
+    st.metric(
+        "🕐 Hora Pico",
+        hora_pico,
+        f"{valor_hora_pico} cajones"
+    )
+
+with col4:
+    st.metric(
+        "🏆 Estacionamiento Top",
+        top_est,
+        f"{top_est_valor} cajones"
+    )
+
+st.divider()
+
+# =====================================
+# EVENTOS ACTIVOS
+# =====================================
+
+st.subheader("🟢 Eventos Activos Ahora")
+
+hora_actual = datetime.now().strftime("%H:%M")
+
+hora_actual_dt = datetime.strptime(
+    hora_actual,
+    "%H:%M"
+)
+
+eventos_activos = []
+
+for e in eventos_dia:
+
+    inicio = datetime.strptime(
+        e["inicio"],
+        "%H:%M"
+    )
+
+    fin = datetime.strptime(
+        e["fin"],
+        "%H:%M"
+    )
+
+    if inicio <= hora_actual_dt < fin:
+
+        eventos_activos.append(e)
+
+if len(eventos_activos) == 0:
+
+    st.info(
+        "No hay eventos activos en este momento"
+    )
+
+else:
+
+    for e in eventos_activos:
+
+        with st.container(border=True):
+
+            st.markdown(
+                f"### 🎫 {e['evento']}"
+            )
+
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                st.write(
+                    f"📍 {e['estacionamiento']}"
                 )
 
-                col1, col2, col3, col4 = st.columns(4)
-
-                with col1:
-                    st.write(
-                        f"📍 {e['estacionamiento']}"
-                    )
-
-                with col2:
-                    st.write(
-                        f"🕐 Inicio: {e['inicio']}"
-                    )
-
-                with col3:
-                    st.write(
-                        f"🕐 Fin: {e['fin']}"
-                    )
-
-                with col4:
-                    st.write(
-                        f"🚗 {e['cajones']} cajones"
-                    )
-
-    st.divider()
-
-    # =====================================
-    # TOTAL DEL DÍA
-    # =====================================
-
-    if st.button("📊 Total del Día"):
-
-        resultado = {}
-
-        for e in eventos_dia:
-
-            est = e["estacionamiento"]
-
-            resultado[est] = resultado.get(
-                est,
-                0
-            ) + e["cajones"]
-
-        st.subheader(
-            "📍 Desglose por Estacionamiento"
-        )
-
-        for est in sorted(resultado):
-
-            st.markdown(f"## 🚗 {est}")
-
-            st.write(
-                f"Total: {resultado[est]}"
-            )
-
-            st.write("---")
-
-    # =====================================
-    # MAÑANA / TARDE
-    # =====================================
-
-    if st.button("🌅🌇 Mañana / Tarde"):
-
-        resultado = {}
-
-        total_m = 0
-        total_t = 0
-
-        for e in eventos_dia:
-
-            est = e["estacionamiento"]
-
-            if est not in resultado:
-
-                resultado[est] = {
-                    "m": 0,
-                    "t": 0
-                }
-
-            hora = datetime.strptime(
-                e["inicio"],
-                "%H:%M"
-            )
-
-            if hora.hour < 12:
-
-                resultado[est]["m"] += e["cajones"]
-
-                total_m += e["cajones"]
-
-            else:
-
-                resultado[est]["t"] += e["cajones"]
-
-                total_t += e["cajones"]
-
-        st.subheader(
-            "📊 Totales Generales"
-        )
-
-        st.success(
-            f"🌅 Mañana: {total_m} | 🌇 Tarde: {total_t}"
-        )
-
-        st.divider()
-
-        st.subheader(
-            "📍 Desglose por Estacionamiento"
-        )
-
-        for est in sorted(resultado):
-
-            d = resultado[est]
-
-            total_est = d["m"] + d["t"]
-
-            st.markdown(f"## 🚗 {est}")
-
-            st.write(
-                f"📊 Total: {total_est}"
-            )
-
-            st.write(
-                f"🌅 Mañana: {d['m']}"
-            )
-
-            st.write(
-                f"🌇 Tarde: {d['t']}"
-            )
-
-            st.write("---")
-
-    # =====================================
-    # OCUPACIÓN POR HORA
-    # =====================================
-
-    if st.button("📈 Ocupación por Hora"):
-
-        estacionamientos = set()
-
-        for e in eventos_dia:
-            estacionamientos.add(
-                e["estacionamiento"]
-            )
-
-        estacionamientos = sorted(
-            estacionamientos
-        )
-
-        tabla = []
-
-        for h in range(24):
-
-            hora_texto = f"{h:02d}:00"
-
-            fila = {
-                "Hora": hora_texto
-            }
-
-            for est in estacionamientos:
-                fila[est] = 0
-
-            hora_actual = datetime.strptime(
-                hora_texto,
-                "%H:%M"
-            )
-
-            for e in eventos_dia:
-
-                inicio = datetime.strptime(
-                    e["inicio"],
-                    "%H:%M"
+            with col2:
+                st.write(
+                    f"🕐 Inicio: {e['inicio']}"
                 )
 
-                fin = datetime.strptime(
-                    e["fin"],
-                    "%H:%M"
+            with col3:
+                st.write(
+                    f"🕐 Fin: {e['fin']}"
                 )
 
-                if inicio <= hora_actual < fin:
-
-                    fila[
-                        e["estacionamiento"]
-                    ] += e["cajones"]
-
-            tabla.append(fila)
-
-        df_horas = pd.DataFrame(tabla)
-
-        st.subheader(
-            "📊 Cajones Ocupados por Hora"
-        )
-
-        st.dataframe(
-            df_horas,
-            use_container_width=True
-        )
-
-        st.divider()
-
-        st.subheader(
-            "📈 Gráfica por Estacionamiento"
-        )
-
-        df_chart = df_horas.set_index(
-            "Hora"
-        )
-
-        st.line_chart(df_chart)
+            with col4:
+                st.write(
+                    f"🚗 {e['cajones']} cajones"
+                )
