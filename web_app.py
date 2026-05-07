@@ -52,16 +52,15 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=1
 )
 
-try:
+authenticator.login(location="main")
 
-    name, authentication_status, username = authenticator.login(
-        location="main"
-    )
+authentication_status = st.session_state.get(
+    "authentication_status"
+)
 
-except:
+name = st.session_state.get("name")
 
-    st.error("Error de autenticación")
-    st.stop()
+username = st.session_state.get("username")
 
 if authentication_status == False:
     st.error("❌ Usuario o contraseña incorrectos")
