@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import re
 
 # =====================================
@@ -462,7 +463,13 @@ st.subheader(
     "🟢 Eventos Activos Ahora"
 )
 
-ahora = datetime.now()
+# =====================================
+# HORA LOCAL MÉXICO
+# =====================================
+
+ahora = datetime.now(
+    ZoneInfo("America/Mexico_City")
+)
 
 hora_actual = ahora.strftime(
     "%H:%M"
