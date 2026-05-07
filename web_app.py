@@ -193,7 +193,10 @@ total_cajones = sum(e["cajones"] for e in eventos_dia)
 
 total_eventos = len(eventos_dia)
 
-# Hora pico
+# =====================================
+# HORA PICO
+# =====================================
+
 horas = {}
 
 for h in range(24):
@@ -218,7 +221,10 @@ for e in eventos_dia:
 hora_pico = max(horas, key=horas.get)
 valor_hora_pico = horas[hora_pico]
 
-# Estacionamiento más usado
+# =====================================
+# ESTACIONAMIENTO TOP
+# =====================================
+
 uso_est = {}
 
 for e in eventos_dia:
@@ -270,6 +276,54 @@ with col4:
         top_est,
         f"{top_est_valor} cajones"
     )
+
+st.divider()
+
+# =====================================
+# EVENTOS ACTIVOS EN TIEMPO REAL
+# =====================================
+
+st.subheader("🟢 Eventos Activos Ahora")
+
+hora_actual = datetime.now().strftime("%H:%M")
+hora_actual_dt = datetime.strptime(hora_actual, "%H:%M")
+
+eventos_activos = []
+
+for e in eventos_dia:
+
+    inicio = datetime.strptime(e["inicio"], "%H:%M")
+    fin = datetime.strptime(e["fin"], "%H:%M")
+
+    if inicio <= hora_actual_dt < fin:
+
+        eventos_activos.append(e)
+
+if len(eventos_activos) == 0:
+
+    st.info("No hay eventos activos en este momento")
+
+else:
+
+    for e in eventos_activos:
+
+        with st.container(border=True):
+
+            st.markdown(f"### 🎫 {e['evento']}")
+
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                st.write(f"📍 {e['estacionamiento']}")
+
+            with col2:
+                st.write(f"🕐 Inicio: {e['inicio']}")
+
+            with col3:
+                st.write(f"🕐 Fin: {e['fin']}")
+
+            with col4:
+                st.write(f"🚗 {e['cajones']} cajones")
 
 st.divider()
 
