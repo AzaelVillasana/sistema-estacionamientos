@@ -460,9 +460,15 @@ if fecha == datetime.now().date():
             "%H:%M"
         )
 
-        if inicio <= hora_actual_dt < fin:
+        # SOLO EVENTOS ACTIVOS EXACTAMENTE AHORA
+
+        if inicio <= hora_actual_dt <= fin:
 
             eventos_activos.append(e)
+
+# =====================================
+# MOSTRAR RESULTADOS
+# =====================================
 
 if len(eventos_activos) == 0:
 
@@ -505,8 +511,6 @@ else:
                 st.write(
                     f"🚗 {e['cajones']} cajones"
                 )
-
-st.divider()
 
 # =====================================
 # TOTAL DEL DÍA
